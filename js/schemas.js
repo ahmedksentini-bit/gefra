@@ -559,6 +559,8 @@ const ELEMENTS_PLAN = {
     return [{ t: 'barriere', a: 0, lab: 'GS4' }, { t: 'merlon', a: 4, b: c0 + m.crete + m.mFer * m.h, crete: [c0, c0 + m.crete], lab: `Merlon ${fmt(m.h)} m` }];
   },
   'SC5-S1': () => [{ t: 'barriere', a: 0, lab: 'GS4 si nécessaire', pointille: true }, { t: 'fosse', a: 10, b: 18, lab: 'Fossé 1,50 m' }],
+  BLE: () => [{ t: 'ecran', a: 0.3, lab: 'BLE (BN4 + écran 3,00 m) en rive' }],
+  H2: () => [{ t: 'barriere', a: 0, lab: 'Barrière d’ouvrage' }],
 };
 
 function coteH(s, x1, x2, y, label, pal) {
@@ -576,8 +578,13 @@ function planSectionCourante(spec, pal) {
   const L1 = spec.L1;
   const L = L1 === null || talus ? 6 : L1;
   // Échelle transversale réelle ; échelle longitudinale : 120 m sur la largeur du plan.
-  const R = 10.5;
-  const ROUTE = 10;
+  const dh = spec.denivele ?? null;
+  const pente = !talus && (spec.position === 'ferBas' || spec.position === 'ferHaut');
+  const largTalus = pente ? Math.min(Math.max((dh ?? 2) * 1.5, 2), 9) : 0;
+  const R = 10.5 + largTalus;
+  const laterale = spec.zone === 'lat';
+  const ROUTE = laterale ? 5.5 : 10;
+  const bau = laterale ? 0 : 2.5;
   const k = Math.max(3.5, Math.min(16, 360 / (R + L + ROUTE)));
   const kx = (xb - xa) / 120;
   const y0 = 48;
@@ -585,7 +592,7 @@ function planSectionCourante(spec, pal) {
   const yT = Y(R);
   const yR = Y(R + L);
   const yEnd = Y(R + L + ROUTE);
-  const H = yEnd + 34;
+  const H = yEnd + (spec.zone === 'echangeur' ? 60 : 34);
   const s = new Svg(W, H, pal, `Vue en plan${L1 !== null ? ` : L1 = ${fmt(L1)} m` : ''}`);
   const yOff = (d) => yR - Math.max(0, Math.min(d, L)) * k;
   const id = s.id;
@@ -615,7 +622,18 @@ function planSectionCourante(spec, pal) {
     s.rect(x - 3, Y(9.2) - 3, 6, 6, pal.steel);
     s.line(x, Y(9.2), x, Y(7.2), pal.steel, 1.2);
   }
-  s.rect(xa, Y(R - 1.0), xb - xa, 0.7 * k, pal.water, pal.groundEdge, 0.8);
+  s.rect(xa, Y(10.5 - 1.0), xb - xa, 0.7 * k, pal.water, pal.groundEdge, 0.8);
+  if (pente) {
+    // talus entre la plate-forme ferroviaire et l'entrée en terre (crête de déblai ou pied de remblai)
+    const ys = Y(10.5);
+    s.rect(xa, ys, xb - xa, yT - ys, pal.earth);
+    const depuis = spec.position === 'ferBas' ? yT : ys;
+    const vers = spec.position === 'ferBas' ? ys : yT;
+    for (let x = xa + 5; x < xb; x += 9) {
+      const lg = (Math.round((x - xa) / 9) % 2) ? 1 : 0.55;
+      s.line(x, depuis, x, depuis + (vers - depuis) * lg, pal.groundEdge, 1);
+    }
+  }
   s.add('</g>');
 
   // interface
@@ -691,25 +709,47 @@ function planSectionCourante(spec, pal) {
   }
 
   // route : BAU, ligne de rive, deux voies, véhicules
+  if (spec.zone === 'echangeur') {
+    s.add(`<path d="M${xa + 70 * kx},${yEnd} C${xa + 90 * kx},${yEnd} ${xa + 100 * kx},${yEnd + 18} ${xb},${yEnd + 26}" fill="none" stroke="${pal.asphalt}" stroke-width="${Math.max(8, 4 * k)}"/>`);
+    s.text(xa + 104 * kx, yEnd + 14, 'bretelle', { size: 11.5, fill: pal.muted, anchor: 'end' });
+  }
   s.rect(xa, yR, xb - xa, yEnd - yR, pal.asphalt);
-  s.line(xa, Y(R + L + 2.5), xb, Y(R + L + 2.5), pal.marking, 2);
-  s.line(xa, Y(R + L + 6), xb, Y(R + L + 6), pal.marking, 1.6, `stroke-dasharray="${3 * kx} ${10 * kx}"`);
+  if (laterale) {
+    s.line(xa, yR + 2, xb, yR + 2, pal.marking, 1.6);
+  } else {
+    s.line(xa, Y(R + L + 2.5), xb, Y(R + L + 2.5), pal.marking, 2);
+    s.line(xa, Y(R + L + 6), xb, Y(R + L + 6), pal.marking, 1.6, `stroke-dasharray="${3 * kx} ${10 * kx}"`);
+  }
   const vehicule = (x, axe, lg, larg, couleur) => {
     s.rect(x, Y(axe) - (larg * k) / 2, lg * kx, larg * k, couleur, pal.ink, 0.8, 'rx="2"');
     s.rect(x + lg * kx - 2.2 * kx, Y(axe) - (larg * k) / 2, 2.2 * kx, larg * k, pal.panel, pal.ink, 0.8, 'rx="2"');
   };
-  vehicule(xa + 40 * kx, R + L + 4.25, 16, 2.5, pal.concrete);
-  vehicule(xa + 85 * kx, R + L + 7.75, 4.5, 1.8, pal.accent);
+  if (laterale) {
+    vehicule(xa + 60 * kx, R + L + 2.7, 5.5, 2.0, pal.hazard);
+  } else {
+    vehicule(xa + 40 * kx, R + L + 4.25, 16, 2.5, pal.concrete);
+    vehicule(xa + 85 * kx, R + L + 7.75, 4.5, 1.8, pal.accent);
+  }
+  if (spec.zone === 'oaJum') {
+    // les deux plates-formes franchissent une autre voie : vide sous les tabliers
+    const xv0 = xa + 50 * kx;
+    const xv1 = xa + 72 * kx;
+    s.rect(xv0, yT, xv1 - xv0, yR - yT, pal.water, pal.accent, 1);
+    s.text((xv0 + xv1) / 2, (yT + yR) / 2 + 4, 'voie franchie', { size: 11, fill: pal.accent, weight: 700 });
+    [y0, yT, yR, yEnd].forEach((y) => { s.line(xv0, y, xv1, y, pal.ink, 2.4); });
+    s.line(xv0, y0 - 6, xv0, yEnd + 6, pal.ink, 1, 'stroke-dasharray="4 3"');
+    s.line(xv1, y0 - 6, xv1, yEnd + 6, pal.ink, 1, 'stroke-dasharray="4 3"');
+  }
 
   // repères et étiquettes à droite
   const xl = xb + 14;
   const droite = [
-    [Y(5), 'Voie ferrée (2 voies)', true],
-    [yT, 'Entrée en terre', false],
+    [Y(5), `Voie ferrée (2 voies)${spec.position === 'ferBas' ? ', en contrebas' : spec.position === 'ferHaut' ? ', au-dessus' : ''}`, true],
+    ...(pente ? [[(Y(10.5) + yT) / 2, `Talus de ${spec.position === 'ferBas' ? 'déblai' : 'remblai'}${dh !== null ? ` · Δh ${fmt(dh)} m` : ''}`, true]] : []),
+    [yT, spec.position === 'ferBas' ? 'Entrée en terre (crête du talus)' : spec.position === 'ferHaut' ? 'Entrée en terre (pied du talus)' : 'Entrée en terre', false],
     ...etiquettes.map(([y, t]) => [y, t, true]),
-    [yR, 'Bord de la BAU', false],
-    [Y(R + L + 1.25), 'BAU', false],
-    [Y(R + L + 6), 'Chaussée', false],
+    [yR, laterale ? 'Bord de chaussée' : 'Bord de la BAU', false],
+    ...(laterale ? [[Y(R + L + 2.7), 'Voirie latérale de service', true]] : [[Y(R + L + 1.25), 'BAU', false], [Y(R + L + 6), 'Chaussée', false]]),
   ].sort((a, b) => a[0] - b[0]);
   let precedent = -Infinity;
   for (const [y, t, gras] of droite) {
@@ -727,8 +767,10 @@ function planSectionCourante(spec, pal) {
     s.text(90, (yT + yR) / 2 - 2, 'L1', { size: 16, weight: 700, fill: pal.cote, anchor: 'end' });
     s.text(90, (yT + yR) / 2 + 15, `${fmt(L1)} m`, { size: 13, weight: 700, fill: pal.cote, anchor: 'end' });
   }
-  s.line(100, yR + 2, 100, Y(R + L + 2.5), pal.cote, 1);
-  s.text(90, Y(R + L + 1.25) + 4, '2,50', { size: 11, fill: pal.cote, anchor: 'end' });
+  if (!laterale) {
+    s.line(100, yR + 2, 100, Y(R + L + bau), pal.cote, 1);
+    s.text(90, Y(R + L + 1.25) + 4, '2,50', { size: 11, fill: pal.cote, anchor: 'end' });
+  }
 
   // échelle
   const e10 = 10 * kx;
