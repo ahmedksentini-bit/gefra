@@ -7,7 +7,7 @@ import * as M from './modele.js';
 import * as X from './exports.js';
 import { Store } from './store.js';
 import { LIGNES_EXEMPLE, META_EXEMPLE } from './exemple.js';
-import { htmlComprendre } from './comprendre.js';
+import { htmlComprendre, NB_DIAPOS, svgMesureL1, svgNiveaux, svgZones } from './comprendre.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -15,7 +15,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
 
 let projet = null;
-const ui = { vue: 'assistant', ouverts: new Set(), filtre: 'tous', rendues: new Set() };
+const ui = { vue: 'assistant', ouverts: new Set(), filtre: 'tous', rendues: new Set(), diapo: 0 };
 
 /* ================================================================ messages et dialogues */
 
@@ -224,13 +224,22 @@ function afficherVue(v) {
 }
 
 function rendreVue(v, force = false) {
-  if (v === 'comprendre') $('#g-contenu').innerHTML = htmlComprendre(projet);
+  if (v === 'comprendre') $('#g-contenu').innerHTML = htmlComprendre(ui.diapo);
   else if (v === 'assistant') rendreResultatAssistant();
   else if (v === 'lineaire') rendreLineaire();
   else if (v === 'constats') rendreConstats();
   else if (v === 'rapport') rendreRapport();
   else if (v === 'calculs') rendreCalculs(force);
   else if (v === 'referentiel' && (!ui.rendues.has('ref') || force)) rendreReferentiel();
+}
+
+function allerDiapo(n, depuisOnglet = false) {
+  if (n < 0 || n >= NB_DIAPOS || n === ui.diapo) return;
+  ui.diapo = n;
+  $('#g-contenu').innerHTML = htmlComprendre(n);
+  const cible = depuisOnglet ? $(`#g-contenu [role="tab"][data-diapo="${n}"]`) : $('#g-contenu .diapo-pied .primary');
+  cible?.focus({ preventScroll: true });
+  $('#v-comprendre').scrollIntoView({ block: 'start' });
 }
 
 /* ================================================================ résultat d'évaluation */
@@ -843,6 +852,9 @@ function rendreReferentiel() {
   ui.rendues.add('ref');
   const t = (entetes, lignes) => `<div class="table-wrap nu"><table class="ref-table"><thead><tr>${entetes.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${lignes.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   $('#ref-contenu').innerHTML = `
+    <section class="panel ref-section"><h2>Mesure de L1 (§4.1)</h2>
+      <figure class="figure schema">${svgMesureL1()}</figure>
+    </section>
     <section class="panel ref-section"><h2>Section courante : plates-formes au même niveau ou voie ferrée en contrebas (§4.2, §4.3)</h2>
       ${t(['Cas', 'L1', 'Niveau minimal', 'Dispositif du guide', 'Points clés'], [
         ['Hors cas', '< 2 m', 'H3 (base)', 'Étude spécifique', 'Non traité par le guide : avis du groupe Géfra.'],
@@ -856,6 +868,7 @@ function rendreReferentiel() {
       <p class="help">Voie ferrée en contrebas : ces dispositifs s’appliquent selon L1 quel que soit le dénivelé (§4.3, 1er cas).</p>
     </section>
     <section class="panel ref-section"><h2>Voie ferrée au-dessus de la route (§4.3, 2e cas)</h2>
+      <figure class="figure schema">${svgNiveaux()}</figure>
       ${t(['Dénivelé', 'Talus de raccordement', 'Dispositif'], [
         ['< 3 m', 'Indifférent', 'Dispositifs du §4.2 selon L1'],
         ['3 à 6 m', '≥ 3/2 (au moins aussi raide)', 'Aucune protection a priori ; N2 possible en zone de transition proche de 3 m'],
@@ -865,6 +878,7 @@ function rendreReferentiel() {
       <p class="help">Configurations « route en déblai » ou « voie ferrée en remblai » : la position de la limite entre emprises est sans incidence sur le dispositif.</p>
     </section>
     <section class="panel ref-section"><h2>Zones particulières (§5)</h2>
+      <figure class="figure schema">${svgZones()}</figure>
       ${t(['Zone', 'Règle'], [
         ['Plates-formes jumelées sur ouvrage', 'Continuité de la protection entre plates-formes, de niveau équivalent à la section courante, déterminée avec la courbe de chute (§5.1).'],
         ['Ouvrage au-dessus de la voie ferrée', 'H2 minimum ; H3 avec ensemble BLE (BN4 + écran) de 3,00 m sur itinéraire à fort trafic PL ; LBE non implantable en rive d’ouvrage courant.'],
@@ -1022,6 +1036,15 @@ function init() {
   $('#f-rapport').addEventListener('change', surSaisieRapport);
   $('#f-rapport').addEventListener('submit', (e) => e.preventDefault());
   $('#k-contenu').addEventListener('input', surSaisieCalcul);
+  $('#g-contenu').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-diapo]');
+    if (b && !b.disabled) allerDiapo(Number(b.dataset.diapo), b.getAttribute('role') === 'tab');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (ui.vue !== 'comprendre' || e.target.closest('input, textarea, select') || $('#dlg').open) return;
+    if (e.key === 'ArrowRight') allerDiapo(ui.diapo + 1);
+    if (e.key === 'ArrowLeft') allerDiapo(ui.diapo - 1);
+  });
 
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-action]');
