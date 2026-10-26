@@ -7,6 +7,7 @@ import * as M from './modele.js';
 import * as X from './exports.js';
 import { Store } from './store.js';
 import { LIGNES_EXEMPLE, META_EXEMPLE } from './exemple.js';
+import { htmlComprendre } from './comprendre.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -204,11 +205,12 @@ function majBadges() {
 
 /* ================================================================ navigation */
 
-const VUES = ['assistant', 'lineaire', 'constats', 'rapport', 'calculs', 'referentiel'];
+const VUES = ['comprendre', 'assistant', 'lineaire', 'constats', 'rapport', 'calculs', 'referentiel'];
+let vueParDefaut = 'assistant';
 
 function routeur() {
   const v = location.hash.replace('#', '');
-  afficherVue(VUES.includes(v) ? v : 'assistant');
+  afficherVue(VUES.includes(v) ? v : vueParDefaut);
 }
 
 function afficherVue(v) {
@@ -222,7 +224,8 @@ function afficherVue(v) {
 }
 
 function rendreVue(v, force = false) {
-  if (v === 'assistant') rendreResultatAssistant();
+  if (v === 'comprendre') $('#g-contenu').innerHTML = htmlComprendre(projet);
+  else if (v === 'assistant') rendreResultatAssistant();
   else if (v === 'lineaire') rendreLineaire();
   else if (v === 'constats') rendreConstats();
   else if (v === 'rapport') rendreRapport();
@@ -984,6 +987,7 @@ function init() {
   appliquerTheme(Store.theme());
   if (!Store.disponible()) setEtat('Stockage local indisponible : exportez vos projets en .json', true);
 
+  if (!Store.liste().length) vueParDefaut = 'comprendre';
   const id = Store.courant();
   let p = id ? Store.charger(id) : null;
   if (!p) {

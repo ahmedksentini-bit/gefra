@@ -26,7 +26,7 @@ let uid = 0;
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const r1 = (v) => Math.round(v * 10) / 10;
 
-class Svg {
+export class Svg {
   constructor(w, h, pal, titre) {
     this.w = w;
     this.h = h;
@@ -62,14 +62,14 @@ class Svg {
 
 /* ------------------------------------------------------------------ coupe type */
 
-function voie(s, cx, y, pal) {
+export function voie(s, cx, y, pal) {
   s.poly([[cx - 46, y], [cx - 30, y - 14], [cx + 30, y - 14], [cx + 46, y]], pal.ground, pal.groundEdge, 1);
   s.rect(cx - 36, y - 17, 72, 3, pal.rail);
   s.rect(cx - 22, y - 22, 5, 6, pal.steel);
   s.rect(cx + 17, y - 22, 5, 6, pal.steel);
 }
 
-function poteauCatenaire(s, x, y, h, pal) {
+export function poteauCatenaire(s, x, y, h, pal) {
   s.line(x, y, x, y - h, pal.steel, 3);
   s.line(x, y - h + 10, x - 70, y - h + 10, pal.steel, 1.5);
   s.line(x, y - h + 30, x - 70, y - h + 12, pal.steel, 1);

@@ -42,6 +42,7 @@
         </div>
       </div>
       <nav class="tabs" aria-label="Sections">
+        <a class="tab" href="#comprendre" data-vue="comprendre">Comprendre</a>
         <a class="tab" href="#assistant" data-vue="assistant">Assistant</a>
         <a class="tab" href="#lineaire" data-vue="lineaire">Linéaire <span id="badge-lin" class="badge zero">0</span></a>
         <a class="tab" href="#constats" data-vue="constats">Constats <span id="badge-constats" class="badge zero">0</span></a>
@@ -53,12 +54,24 @@
   </header>
 
   <main>
-    <section id="v-assistant" data-vue="assistant">
+    <section id="v-comprendre" data-vue="comprendre" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Comprendre GÉFRA</h1>
+          <p>Ce que fait l’application, d’où viennent ses réponses et comment lire ses résultats, en six schémas.</p>
+        </div>
+        <a class="btn primary" href="#assistant">Ouvrir l’assistant</a>
+      </div>
+      <div id="g-contenu" class="calc-grid"></div>
+    </section>
+
+    <section id="v-assistant" data-vue="assistant" hidden>
       <div class="view-head">
         <div>
           <h1>Assistant de choix du dispositif</h1>
           <p>Décrivez une configuration de jumelage : l'application détermine le cas Géfra, le niveau de retenue et l'élément anti-pénétration exigés, les solutions du guide avec leur coupe cotée, et contrôle le dispositif projeté.</p>
         </div>
+        <a class="btn ghost" href="#comprendre">Comment ça marche ?</a>
       </div>
       <div class="split">
         <form id="f-assistant" class="panel form-panel" autocomplete="off" novalidate></form>

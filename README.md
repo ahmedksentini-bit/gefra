@@ -8,12 +8,51 @@ Site statique : HTML, CSS et JavaScript (modules ES), sans étape de compilation
 
 | Onglet | Rôle |
 |---|---|
+| **Comprendre** | Six schémas explicatifs : ce que fait l'outil, la mesure de L1, la règle des cas, l'arbre de décision avec le chemin de la configuration en cours, la carte des zones, le passage du contrôle au constat. |
 | **Assistant** | Détermine, pour une configuration, le cas Géfra, le niveau de retenue et l'élément anti-pénétration exigés. Il présente les solutions du guide avec une coupe type cotée à la valeur réelle de L1, puis contrôle le dispositif projeté. |
 | **Linéaire** | Analyse tronçon par tronçon (PK, côté, zone, L1, dénivelé, talus, dispositif projeté). Saisie directe, collage depuis Excel, import CSV ou XLSX, modèle .xlsx fourni. |
 | **Constats** | Constats générés à partir des écarts (localisation, constat, risque, recommandation, référence au guide), classés P0, P1 ou P2. L'auditeur peut modifier la priorité et les textes. |
 | **Rapport** | Note de contrôle avec cartouche, synthèse, tableau du linéaire, constats, fiche de configuration et points de vérification. Export Word (.docx), PDF par l'impression du navigateur, tableaux Excel (.xlsx). |
 | **Calculs** | Courbe de chute du chargement (§3.1), longueur de protection aux abords des ouvrages (§5.2), implantation du merlon (§4.2, 4e cas). |
 | **Référentiel** | Synthèse des règles appliquées, catalogue des dispositifs, sigles. |
+
+## Comment ça marche
+
+L'onglet **Comprendre** de l'application détaille ce fonctionnement en six schémas : parcours, mesure de L1, règle des cas, arbre de décision (avec le chemin de la configuration en cours), carte des zones, passage du contrôle au constat.
+
+```mermaid
+flowchart LR
+  A["1. Décrire<br/>zone, L1, niveaux,<br/>dénivelé, talus, trafic PL"] --> B["2. Classer<br/>cas du guide<br/>§4.2, §4.3, §5"]
+  B --> C["3. Exiger<br/>niveau de retenue,<br/>écran / merlon / fossé,<br/>coupe cotée"]
+  C --> D["4. Contrôler<br/>dispositif projeté<br/>contre l'exigence"]
+  D --> F["5. Rédiger<br/>constats P0 / P1 / P2,<br/>rapport Word, PDF, Excel"]
+```
+
+La donnée clé est **L1** : la distance entre la limite de la largeur roulable (bord extérieur de la BAU ou de la BDD) et la limite des aménagements ferroviaires (entrée en terre : assainissement, crête de déblai, pied de remblai ou nu d'un mur anti-bruit).
+
+```mermaid
+flowchart LR
+  Z{"Zone du tronçon"} --> SC["Section courante<br/>ou voirie latérale"]
+  Z --> OAJ["Plates-formes jumelées<br/>sur ouvrage"] --> R1["Niveau du cas selon L1 (H2 min. en rive)<br/>+ écran si la courbe de chute atteint la voie"]
+  Z --> OA["Ouvrage au-dessus<br/>de la voie ferrée"] --> R2["H2 ; fort trafic PL : H3 + BLE 3,00 m"]
+  Z --> AB["Abords d'ouvrage"] --> R3["Prolonger 50 m ⟂ voie ferrée<br/>= 50 / sin α le long de la route"]
+  Z --> CA["Carrefour surélevé contigu"] --> R4["Fort trafic PL : débouché reporté<br/>sinon décalage 5–10° ou musoir"]
+  Z --> EC["Échangeur contigu"] --> R5["Analyse particulière : BLE, BHE ou LBE"]
+  SC --> N{"Niveaux relatifs"}
+  N -- "à niveau ou fer en contrebas" --> L{"Distance L1"}
+  N -- "fer au-dessus" --> H{"Dénivelé Δh"}
+  H -- "< 3 m" --> L
+  H -- "3 à 6 m, talus ≥ 3/2" --> H1["Aucune protection a priori"]
+  H -- "3 à 6 m, talus < 3/2" --> H2["Barrière N2"]
+  H -- "> 6 m" --> H3["Aucun dispositif"]
+  L -- "< 2 m" --> C0["Hors cas : étude spécifique"]
+  L -- "2–6 m" --> C1["Cas 1 : H3 + écran/mur 3,50 m"]
+  L -- "6–8 m" --> C2["Cas 2 : LBE 3,50 m"]
+  L -- "8–17 m" --> C3["Cas 3 : H2 + écran 3,00 m"]
+  L -- "17–30 m" --> C4["Cas 4 : merlon 3 m + N2"]
+  L -- "30–50 m" --> C5["Cas 5 : fossé 1,50 m"]
+  L -- "≥ 50 m" --> C6["Analyse au cas par cas"]
+```
 
 ## Règles appliquées
 
@@ -94,6 +133,7 @@ js/exports.js       import CSV/XLSX, export Word/Excel/JSON
 js/app.js           interface
 js/store.js         stockage local (localStorage)
 js/exemple.js       projet d'exemple (données fictives)
+js/comprendre.js    vue « Comprendre » et ses schémas explicatifs
 test/               tests du moteur
 _headers            en-têtes HTTP pour Cloudflare Pages
 ```
