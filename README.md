@@ -134,6 +134,7 @@ js/app.js           interface
 js/store.js         stockage local (localStorage)
 js/exemple.js       projet d'exemple (données fictives)
 js/comprendre.js    vue « Comprendre » et ses schémas explicatifs
+js/glossaire.js     abréviations : infobulles et listes contextuelles
 test/               tests du moteur
 _headers            en-têtes HTTP pour Cloudflare Pages
 ```

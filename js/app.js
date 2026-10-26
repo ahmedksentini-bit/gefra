@@ -8,6 +8,7 @@ import * as X from './exports.js';
 import { Store } from './store.js';
 import { LIGNES_EXEMPLE, META_EXEMPLE } from './exemple.js';
 import { htmlComprendre, NB_DIAPOS, svgNiveaux } from './comprendre.js';
+import { GLOSSAIRE, abbr, siglesDe, htmlSigles } from './glossaire.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -271,7 +272,7 @@ function htmlResultat(ligne, { compact = false } = {}) {
 
   h += `<div class="panel"><div class="res-head"><div class="plaque">${esc(pl.grand)}<small>${esc(pl.petit)}</small></div><div>`;
   h += `<div class="eyebrow">Géfra ${esc(res.ref)}${res.plage ? ` · ${esc(res.plage)}` : ''}</div>`;
-  h += `<h2>${esc(res.titre)}</h2><p class="resume">${esc(res.resume)}</p>`;
+  h += `<h2>${abbr(res.titre)}</h2><p class="resume">${abbr(res.resume)}</p>`;
   h += `<div class="tags"><span class="pill ${stCls}">${esc(stLabel)}</span><span class="pill neutre">${esc(E.ZONES[n.zone].label)}</span>${zonePos(n) && n.position !== 'meme' ? `<span class="pill neutre">${esc(E.POSITIONS[n.position])}</span>` : ''}</div>`;
   h += '</div></div>';
   const fhSup = n.position === 'ferHaut' && (n.denivele ?? 0) >= 3 && zonePos(n);
@@ -286,24 +287,24 @@ function htmlResultat(ligne, { compact = false } = {}) {
     else t3 = ['Barrière en bord de BAU/BDD', ex.barriereBAU || '—', ''];
     h += '<div class="tiles">';
     if (n.zone !== 'carrefour') {
-      h += `<div class="panel tile"><span class="k">Niveau de retenue minimal</span><span class="v">${esc(ex.niveauMin || (res.statut === 'aucune' ? 'Aucun' : '—'))}</span><span class="d">Au sens de la NF EN 1317-2</span></div>`;
-      h += `<div class="panel tile"><span class="k">Élément anti-pénétration</span><span class="v">${esc(vPhys)}</span><span class="d">${esc(dPhys)}</span></div>`;
+      h += `<div class="panel tile"><span class="k">Niveau de retenue minimal</span><span class="v">${abbr(ex.niveauMin || (res.statut === 'aucune' ? 'Aucun' : '—'))}</span><span class="d">Au sens de la NF EN 1317-2</span></div>`;
+      h += `<div class="panel tile"><span class="k">Élément anti-pénétration</span><span class="v">${abbr(vPhys)}</span><span class="d">${abbr(dPhys)}</span></div>`;
     }
-    h += `<div class="panel tile"><span class="k">${esc(t3[0])}</span><span class="v${t3[1].length > 18 ? ' sm' : ''}">${esc(t3[1])}</span>${t3[2] ? `<span class="d">${esc(t3[2])}</span>` : ''}</div>`;
+    h += `<div class="panel tile"><span class="k">${esc(t3[0])}</span><span class="v${t3[1].length > 18 ? ' sm' : ''}">${abbr(t3[1])}</span>${t3[2] ? `<span class="d">${abbr(t3[2])}</span>` : ''}</div>`;
     h += '</div>';
   }
 
   if (res.alertes.length) {
-    h += `<ul class="alertes">${res.alertes.map((a) => `<li class="alerte ${a.p.toLowerCase()}"><span class="pill ${a.p.toLowerCase()}">${esc(a.p)}</span><span>${esc(a.t)}</span></li>`).join('')}</ul>`;
+    h += `<ul class="alertes">${res.alertes.map((a) => `<li class="alerte ${a.p.toLowerCase()}"><span class="pill ${a.p.toLowerCase()}">${esc(a.p)}</span><span>${abbr(a.t)}</span></li>`).join('')}</ul>`;
   }
 
   const renseigne = n.zone === 'carrefour' ? n.amenagement : n.projet;
   if (renseigne && res.statut !== 'incomplet') {
     const st = M.statutLigne({ res, ctl });
     h += `<div class="panel controle"><div class="controle-head"><h3>Contrôle du dispositif projeté</h3><span class="pill ${st.cls}">${esc(st.label)}</span></div>`;
-    h += `<p class="help">${esc(E.libelleProjete(p))}</p>`;
+    h += `<p class="help">${abbr(E.libelleProjete(p))}</p>`;
     if (ctl.ecarts.length) {
-      h += `<ul class="ecarts">${ctl.ecarts.map((e) => `<li class="ecart"><span class="pill ${e.priorite.toLowerCase()}">${e.priorite}</span><div><p>${esc(e.ecart)}</p><p class="reco">${esc(e.reco)}</p></div></li>`).join('')}</ul>`;
+      h += `<ul class="ecarts">${ctl.ecarts.map((e) => `<li class="ecart"><span class="pill ${e.priorite.toLowerCase()}">${e.priorite}</span><div><p>${abbr(e.ecart)}</p><p class="reco">${abbr(e.reco)}</p></div></li>`).join('')}</ul>`;
     } else {
       h += '<p>Le dispositif projeté répond aux exigences du guide pour cette configuration.</p>';
     }
@@ -318,7 +319,7 @@ function htmlResultat(ligne, { compact = false } = {}) {
       const montrer = !compact || (!figure && s.role !== 'alternative');
       const svg = montrer ? S.schemaSVG(s.schema) : '';
       if (svg) figure = true;
-      h += `<article class="panel sol${s.role === 'indiquée' ? ' indiquee' : ''}"><div class="sol-head"><h4>${esc(s.nom)}</h4><span class="pill ${cls}">${esc(role)}</span></div><div class="sol-body"><ul>${s.texte.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+      h += `<article class="panel sol${s.role === 'indiquée' ? ' indiquee' : ''}"><div class="sol-head"><h4>${abbr(s.nom)}</h4><span class="pill ${cls}">${esc(role)}</span></div><div class="sol-body"><ul>${s.texte.map((t) => `<li>${abbr(t)}</li>`).join('')}</ul>`;
       if (svg) h += `<figure class="figure">${svg}<figcaption>Coupe de principe générée pour la configuration saisie (cotes en mètres, en rouge les valeurs sous le minimum).</figcaption></figure>`;
       h += '</div></article>';
     }
@@ -330,12 +331,14 @@ function htmlResultat(ligne, { compact = false } = {}) {
   }
 
   if (res.calculs.length) {
-    h += `<div class="panel"><table class="calc-table"><tbody>${res.calculs.map((c) => `<tr><td>${esc(c.label)}<div class="d">${esc(c.detail)}</div></td><td class="val">${esc(c.valeur)}</td></tr>`).join('')}</tbody></table></div>`;
+    h += `<div class="panel"><table class="calc-table"><tbody>${res.calculs.map((c) => `<tr><td>${abbr(c.label)}<div class="d">${abbr(c.detail)}</div></td><td class="val">${esc(c.valeur)}</td></tr>`).join('')}</tbody></table></div>`;
   }
-  if (res.notes.length) h += `<ul class="notes">${res.notes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+  if (res.notes.length) h += `<ul class="notes">${res.notes.map((t) => `<li>${abbr(t)}</li>`).join('')}</ul>`;
   if (res.verifs.length) {
-    h += `<details class="panel verifs"><summary>Points de vérification (${res.verifs.length})</summary><ul>${res.verifs.map((t) => `<li>${esc(t)}</li>`).join('')}</ul></details>`;
+    h += `<details class="panel verifs"><summary>Points de vérification (${res.verifs.length})</summary><ul>${res.verifs.map((t) => `<li>${abbr(t)}</li>`).join('')}</ul></details>`;
   }
+  const sigles = siglesDe(h.replace(/<[^>]+>/g, ' '));
+  if (sigles.length) h += `<details class="panel verifs"><summary>Abréviations (${sigles.length})</summary>${htmlSigles(sigles)}</details>`;
   h += '</div>';
   return h;
 }
@@ -910,8 +913,9 @@ function rendreReferentiel() {
       ${t(['Modèle', 'Composition', 'Niveau', 'Matériau', 'Référence', 'Domaine d’emploi'], E.CATALOGUE.map((c) => [c.nom, c.compo || '—', c.niveau, c.materiau, c.ref, c.emploi]))}
       <p class="help">Liste non exhaustive établie en 2004 : vérifier l’homologation ou le marquage CE des produits actuels.</p>
     </section>
-    <section class="panel ref-section"><h2>Sigles</h2>
-      ${t(['Sigle', 'Signification'], [['BAU', 'Bande d’arrêt d’urgence'], ['BDD', 'Bande dérasée de droite'], ['LBA', 'Séparateur lourd en béton'], ['LBE', 'LBA + écran de retenue de chargement'], ['BHO', 'Barrière hors ouvrage'], ['BHE', 'BHO + écran'], ['BN4', 'Barrière normale métallique'], ['BLE', 'BN4 + écran'], ['GS4 / GS2', 'Glissière métallique simple (supports tous les 4 m / 2 m)'], ['GRC', 'Glissière renforcée'], ['GBA', 'Glissière en béton adhérent'], ['DCV', 'Détecteur de chute de véhicules'], ['FA', 'Force horizontale de choc']])}
+    <section class="panel ref-section"><h2>Abréviations</h2>
+      ${t(['Abréviation', 'Signification'], GLOSSAIRE.map((g) => [g.sigle, g.sens]))}
+      <p class="help">Niveaux de retenue : essais de choc de référence de la norme NF EN 1317-2.</p>
     </section>
     <p class="disclaimer">GÉFRA est un outil d’aide à la décision. Il transcrit les règles du guide technique Sétra « Géfra » (avril 2004, réf. 0401), qui reste le document de référence ; il ne le remplace pas et ne dispense pas de l’analyse de l’ingénieur. Les normes et homologations citées par le guide doivent être vérifiées dans leur version en vigueur.</p>`;
 }

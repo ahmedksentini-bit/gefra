@@ -629,6 +629,13 @@ td.detail { background: var(--surface-2); padding: 16px !important; }
   font-weight: 700;
   font-size: 15px;
 }
+abbr[title] { text-decoration: underline dotted; text-decoration-color: var(--ink-2); text-underline-offset: 3px; cursor: help; }
+.sigles { margin: 0; padding: 4px 16px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 20px; }
+.sigles div { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.sigles dt { font-family: var(--font-mono); font-weight: 600; font-size: 13px; color: var(--accent); }
+.sigles dd { margin: 0; font-size: 14px; color: var(--ink); }
+.sigles-coupe { display: grid; gap: 4px; }
+.sigles-coupe .sigles { padding: 0; }
 .cas-cliquable { cursor: pointer; }
 .cas-cliquable:hover > rect:first-of-type { stroke: var(--line-strong); }
 .cas-cliquable:focus { outline: none; }

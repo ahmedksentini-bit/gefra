@@ -4,6 +4,7 @@
  */
 import { Svg, PAL_ECRAN, svgCoupe } from './schemas.js';
 import { ZONES } from './engine.js';
+import { siglesDe, htmlSigles } from './glossaire.js';
 
 const P = {
   ...PAL_ECRAN,
@@ -464,12 +465,15 @@ function htmlCoupeCas(code, sol = 0) {
   const choix = coupes.length > 1
     ? `<div class="coupe-sols" role="group" aria-label="Solutions proposées par le guide pour ce cas">${coupes.map((x, i) => `<button type="button" data-sol="${i}" aria-pressed="${x === c}">${esc(x.nom)}</button>`).join('')}</div>`
     : `<span class="coupe-nom">${esc(c.nom)}</span>`;
+  const svg = svgCoupe({ kind: 'coupe', variante: c.variante, L1: c.L1, position: 'meme' });
+  const sigles = siglesDe(`${c.nom} ${infos.exig} ${infos.disp} ${svg.replace(/<[^>]+>/g, ' ')}`);
   return `
     <div class="coupe-cas">
       <div class="coupe-tete"><strong>${esc(infos.cas)} · ${esc(infos.plage)}</strong>${choix}</div>
-      <figure class="figure">${svgCoupe({ kind: 'coupe', variante: c.variante, L1: c.L1, position: 'meme' })}
+      <figure class="figure">${svg}
         <figcaption>Coupe de principe cotée pour L1 = ${String(c.L1).replace('.', ',')} m, en exemple. Dans l’Assistant, elle se redessine avec votre L1.</figcaption>
       </figure>
+      ${sigles.length ? `<div class="sigles-coupe"><span class="eyebrow">Abréviations</span>${htmlSigles(sigles)}</div>` : ''}
     </div>`;
 }
 
