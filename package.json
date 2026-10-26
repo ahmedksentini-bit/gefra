@@ -1,0 +1,11 @@
+{
+  "name": "gefra",
+  "version": "1.0.0",
+  "description": "Aide à la définition des dispositifs de protection anti-pénétration pour le jumelage des plates-formes ferroviaires et routières (guide Sétra Géfra, 2004).",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "serve": "python3 -m http.server 8080"
+  }
+}

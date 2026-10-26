@@ -1,0 +1,9 @@
+.DS_Store
+node_modules/
+.claude/
+*.log
+
+# Ne pas versionner le guide Sétra ni les dossiers de projet (droits de reproduction, confidentialité)
+*.pdf
+*.docx
+*.xlsx

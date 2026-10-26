@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GÉFRA</title>
+  <meta name="description" content="Aide à la définition des dispositifs de protection anti-pénétration pour le jumelage des plates-formes ferroviaires et routières, d'après le guide Sétra Géfra (2004).">
+  <meta name="theme-color" content="#16202A">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="appbar">
+    <div class="appbar-inner">
+      <div class="brand">
+        <span class="brand-mark">GÉFRA</span>
+        <span class="brand-sub">Jumelage rail–route · protection anti-pénétration</span>
+      </div>
+      <div class="projbar">
+        <select id="proj-select" aria-label="Projet ouvert"></select>
+        <span id="save-state" class="save-state"></span>
+        <div class="menu">
+          <button id="proj-menu-btn" class="icon-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Actions sur le projet">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          </button>
+          <div id="proj-menu" class="menu-list" hidden>
+            <button type="button" data-action="nouveau">Nouveau projet</button>
+            <button type="button" data-action="dupliquer">Dupliquer le projet</button>
+            <button type="button" data-action="renommer">Renommer…</button>
+            <hr>
+            <button type="button" data-action="exporter-json">Exporter le projet (.json)</button>
+            <button type="button" data-action="importer-json">Importer un projet (.json)…</button>
+            <hr>
+            <button type="button" data-action="theme">Thème : système</button>
+            <hr>
+            <button type="button" data-action="supprimer" class="danger">Supprimer le projet…</button>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="Sections">
+        <a class="tab" href="#assistant" data-vue="assistant">Assistant</a>
+        <a class="tab" href="#lineaire" data-vue="lineaire">Linéaire <span id="badge-lin" class="badge zero">0</span></a>
+        <a class="tab" href="#constats" data-vue="constats">Constats <span id="badge-constats" class="badge zero">0</span></a>
+        <a class="tab" href="#rapport" data-vue="rapport">Rapport</a>
+        <a class="tab" href="#calculs" data-vue="calculs">Calculs</a>
+        <a class="tab" href="#referentiel" data-vue="referentiel">Référentiel</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section id="v-assistant" data-vue="assistant">
+      <div class="view-head">
+        <div>
+          <h1>Assistant de choix du dispositif</h1>
+          <p>Décrivez une configuration de jumelage : l'application détermine le cas Géfra, le niveau de retenue et l'élément anti-pénétration exigés, les solutions du guide avec leur coupe cotée, et contrôle le dispositif projeté.</p>
+        </div>
+      </div>
+      <div class="split">
+        <form id="f-assistant" class="panel form-panel" autocomplete="off" novalidate></form>
+        <div id="a-resultat"></div>
+      </div>
+    </section>
+
+    <section id="v-lineaire" data-vue="lineaire" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Analyse du linéaire</h1>
+          <p>Une ligne par tronçon homogène. Saisissez, collez depuis Excel ou importez un fichier : chaque tronçon est classé selon le guide et le dispositif projeté est contrôlé.</p>
+        </div>
+        <div class="toolbar">
+          <button class="btn primary" type="button" data-action="ajouter-ligne">+ Tronçon</button>
+          <button class="btn" type="button" data-action="coller">Coller depuis Excel</button>
+          <button class="btn" type="button" data-action="importer-tableau">Importer CSV / XLSX</button>
+          <button class="btn" type="button" data-action="modele">Modèle .xlsx</button>
+          <button class="btn" type="button" data-action="export-xlsx">Exporter .xlsx</button>
+          <button class="btn ghost" type="button" data-action="trier">Trier par PK</button>
+        </div>
+      </div>
+      <div id="lin-summary" class="summary"></div>
+      <div id="lin-table" class="table-wrap"></div>
+    </section>
+
+    <section id="v-constats" data-vue="constats" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Constats d'audit</h1>
+          <p>Générés à partir des écarts du linéaire et classés P0, P1 ou P2. Vous pouvez reprendre la priorité et les textes ; vos modifications sont conservées tant que le tronçon ne change pas de nature.</p>
+        </div>
+        <div class="toolbar">
+          <div class="filters" id="c-filtres" role="group" aria-label="Filtrer par priorité"></div>
+          <button class="btn" type="button" data-action="constat-libre">+ Constat libre</button>
+        </div>
+      </div>
+      <div id="c-liste" class="constats"></div>
+    </section>
+
+    <section id="v-rapport" data-vue="rapport" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Rapport</h1>
+          <p>Note de contrôle Géfra prête à joindre au rapport d'audit. Export Word modifiable, PDF par l'impression du navigateur, tableaux en Excel.</p>
+        </div>
+      </div>
+      <div class="rapport-grid">
+        <div class="panel form-panel">
+          <form id="f-rapport" autocomplete="off"></form>
+          <div class="toolbar mt">
+            <button class="btn primary" type="button" data-action="export-docx">Exporter en Word (.docx)</button>
+            <button class="btn" type="button" data-action="imprimer">Imprimer / PDF</button>
+            <button class="btn" type="button" data-action="export-xlsx">Tableaux Excel (.xlsx)</button>
+          </div>
+        </div>
+        <div class="report-frame"><div id="r-apercu" class="report"></div></div>
+      </div>
+    </section>
+
+    <section id="v-calculs" data-vue="calculs" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Calculs</h1>
+          <p>Outils de dimensionnement tirés du guide : courbe de chute du chargement (§3.1), longueur de protection aux abords des ouvrages (§5.2) et implantation du merlon (§4.2, 4e cas).</p>
+        </div>
+      </div>
+      <div id="k-contenu" class="calc-grid"></div>
+    </section>
+
+    <section id="v-referentiel" data-vue="referentiel" hidden>
+      <div class="view-head">
+        <div>
+          <h1>Référentiel Géfra</h1>
+          <p>Synthèse des règles appliquées par l'application, avec les renvois aux paragraphes du guide.</p>
+        </div>
+      </div>
+      <div id="ref-contenu" class="calc-grid"></div>
+    </section>
+  </main>
+
+  <dialog id="dlg"></dialog>
+  <input id="file-json" type="file" accept=".json,application/json" hidden>
+  <input id="file-tableau" type="file" accept=".csv,.xlsx,.xls,text/csv" hidden>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
