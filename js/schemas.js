@@ -12,6 +12,7 @@ export const PAL_ECRAN = {
   concrete: 'var(--concrete)', steel: 'var(--steel)', cote: 'var(--cote)', accent: 'var(--accent)',
   rail: 'var(--rail)', asphalt: 'var(--asphalt)', hazard: 'var(--hazard)', ok: 'var(--ok)', p0: 'var(--p0)',
   panel: 'var(--surface-2)', water: 'var(--accent-soft)',
+  grass: 'var(--grass)', ballast: 'var(--ballast)', marking: 'var(--marking)',
   font: 'inherit',
 };
 
@@ -20,7 +21,7 @@ export const PAL_EXPORT = {
   ground: '#ECE8DD', groundEdge: '#8C8473', earth: '#D8CBA8',
   concrete: '#C9CFCD', steel: '#3D4B58', cote: '#C0262D', accent: '#1D5C8C',
   rail: '#6B5B4E', asphalt: '#5A6168', hazard: '#E0A800', ok: '#2E7D4F', p0: '#C0262D',
-  panel: '#F5F7F6', water: '#E2ECF5',
+  panel: '#F5F7F6', water: '#E2ECF5', grass: '#DDE6D3', ballast: '#B9B1A4', marking: '#FFFFFF',
   font: 'Arial, Helvetica, sans-serif',
 };
 
@@ -569,119 +570,173 @@ function coteH(s, x1, x2, y, label, pal) {
 
 function planSectionCourante(spec, pal) {
   const W = 1000;
-  const xa = 140;
+  const xa = 130;
   const xb = 770;
+  const talus = !!(spec.variante && spec.variante.startsWith('FH'));
   const L1 = spec.L1;
-  const talus = spec.variante && spec.variante.startsWith('FH');
-  const hi = L1 === null || talus ? 80 : Math.max(48, Math.min(170, 30 + Math.sqrt(L1) * 20));
-  const yT = 104;
-  const yR = yT + hi;
-  const H = yR + 24 + 56 + 30;
+  const L = L1 === null || talus ? 6 : L1;
+  // Échelle transversale réelle ; échelle longitudinale : 120 m sur la largeur du plan.
+  const R = 10.5;
+  const ROUTE = 10;
+  const k = Math.max(3.5, Math.min(16, 360 / (R + L + ROUTE)));
+  const kx = (xb - xa) / 120;
+  const y0 = 48;
+  const Y = (m) => y0 + m * k;
+  const yT = Y(R);
+  const yR = Y(R + L);
+  const yEnd = Y(R + L + ROUTE);
+  const H = yEnd + 34;
   const s = new Svg(W, H, pal, `Vue en plan${L1 !== null ? ` : L1 = ${fmt(L1)} m` : ''}`);
-  const yOff = (d) => yR - (Math.max(0, Math.min(d, L1)) / L1) * hi;
+  const yOff = (d) => yR - Math.max(0, Math.min(d, L)) * k;
+  const id = s.id;
+  s.defs.push(`<clipPath id="${id}c"><rect x="${xa}" y="${y0 - 10}" width="${xb - xa}" height="${H}"/></clipPath>`);
+  s.defs.push(`<pattern id="${id}hb" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="${pal.concrete}"/><line x1="0" y1="0" x2="0" y2="6" stroke="${pal.steel}" stroke-width="1"/></pattern>`);
 
-  // tronçon et PK
+  // PK et longueur
   const d = parsePK(spec.pkDebut);
   const f = parsePK(spec.pkFin);
   if (d !== null && f !== null && f !== d) {
-    coteH(s, xa, xb, 30, `${fmt(Math.abs(f - d), 0)} m`, pal);
-    s.text(xa, 18, `PK ${fmtPK(Math.min(d, f))}`, { size: 12, anchor: 'start', fill: pal.muted });
-    s.text(xb, 18, `PK ${fmtPK(Math.max(d, f))}`, { size: 12, anchor: 'end', fill: pal.muted });
-  } else {
-    s.text((xa + xb) / 2, 28, 'Tronçon type (renseignez les PK pour coter sa longueur)', { size: 12, fill: pal.muted, italic: true });
+    coteH(s, xa, xb, 26, `${fmt(Math.abs(f - d), 0)} m`, pal);
+    s.text(xa, 14, `PK ${fmtPK(Math.min(d, f))}`, { size: 12, anchor: 'start', fill: pal.muted });
+    s.text(xb, 14, `PK ${fmtPK(Math.max(d, f))}`, { size: 12, anchor: 'end', fill: pal.muted });
   }
 
-  // voie franchie sous des plates-formes jumelées sur ouvrage
-  if (spec.zone === 'oaJum') {
-    s.rect(420, 40, 80, H - 50, pal.water || pal.bg, pal.accent, 0.8, 'opacity="0.6"');
-    s.text(460, H - 16, 'voie franchie', { size: 11.5, fill: pal.muted });
+  s.add(`<g clip-path="url(#${id}c)">`);
+  // plate-forme ferroviaire : fossé, piste, deux voies sur ballast
+  s.rect(xa, y0, xb - xa, R * k, pal.grass);
+  s.rect(xa, Y(0.6), xb - xa, (R - 1.8) * k, pal.ballast);
+  [3.0, 7.2].forEach((axe) => {
+    const g = 1.435 / 2;
+    for (let x = xa + 2; x < xb; x += Math.max(3, 0.6 * kx)) s.line(x, Y(axe - 1.3), x, Y(axe + 1.3), pal.rail, Math.max(1, 0.25 * kx));
+    s.line(xa, Y(axe - g), xb, Y(axe - g), pal.steel, 1.6);
+    s.line(xa, Y(axe + g), xb, Y(axe + g), pal.steel, 1.6);
+  });
+  for (let x = xa + 30; x < xb; x += 60 * kx) {
+    s.rect(x - 3, Y(9.2) - 3, 6, 6, pal.steel);
+    s.line(x, Y(9.2), x, Y(7.2), pal.steel, 1.2);
   }
-
-  // voie ferrée
-  s.rect(xa, 54, xb - xa, yT - 54, pal.ground, pal.groundEdge, 1);
-  for (let x = xa + 4; x < xb; x += 9) s.line(x, 66, x, 92, pal.rail, 1);
-  s.line(xa, 72, xb, 72, pal.steel, 1.4);
-  s.line(xa, 86, xb, 86, pal.steel, 1.4);
-  const pos = spec.position === 'ferBas' ? 'en contrebas' : spec.position === 'ferHaut' ? 'au-dessus' : '';
-  s.text(xb + 14, 74, 'Voie ferrée', { size: 13, weight: 700, anchor: 'start' });
-  if (pos) s.text(xb + 14, 92, `${pos}${spec.denivele !== null && spec.denivele !== undefined ? ` · Δh ${fmt(spec.denivele)} m` : ''}`, { size: 12, anchor: 'start', fill: pal.muted });
+  s.rect(xa, Y(R - 1.0), xb - xa, 0.7 * k, pal.water, pal.groundEdge, 0.8);
+  s.add('</g>');
 
   // interface
-  s.rect(xa, yT, xb - xa, hi, talus ? pal.earth : pal.panel || pal.bg, 'none', 0, talus ? 'opacity="0.55"' : '');
+  if (talus) {
+    s.rect(xa, yT, xb - xa, yR - yT, pal.earth);
+    for (let x = xa + 6; x < xb; x += 12) s.line(x, yT, x, yT + ((x / 12) % 2 ? (yR - yT) * 0.7 : (yR - yT) * 0.4), pal.groundEdge, 1);
+  } else {
+    s.rect(xa, yT, xb - xa, yR - yT, pal.grass);
+  }
   s.line(xa, yT, xb, yT, pal.groundEdge, 2);
-  s.text(xb + 14, yT + 5, 'Entrée en terre', { size: 12, anchor: 'start', fill: pal.muted });
 
   const etiquettes = [];
+  const supports = (y, pasM, h = 3) => { for (let x = xa + 4; x < xb; x += pasM * kx) s.line(x, y - h, x, y + h, pal.steel, 1.4); };
   if (talus) {
-    s.text((xa + xb) / 2, yT + hi / 2 + 5, `Talus de raccordement${spec.talus ? ` ${fmtTalus(spec.talus)}` : ''}`, { size: 13, weight: 700 });
     if (spec.variante !== 'FH-aucun') {
-      const pointille = spec.variante === 'FH-N2-option';
-      s.line(xa, yR - 4, xb, yR - 4, pal.steel, 3, pointille ? 'stroke-dasharray="6 4"' : '');
-      etiquettes.push([yR - 4, pointille ? 'Glissière N2 possible' : 'Glissière N2 (GS4)']);
+      const opt = spec.variante === 'FH-N2-option';
+      s.line(xa, yR - 0.5 * k, xb, yR - 0.5 * k, pal.steel, 2.4, opt ? 'stroke-dasharray="6 4"' : '');
+      if (!opt) supports(yR - 0.5 * k, 4);
+      etiquettes.push([yR - 0.5 * k, opt ? 'Glissière N2 possible' : 'Glissière N2 (GS4)']);
     }
+    etiquettes.push([(yT + yR) / 2, `Talus${spec.talus ? ` ${fmtTalus(spec.talus)}` : ''}${spec.denivele != null ? ` · Δh ${fmt(spec.denivele)} m` : ''}`]);
   } else if (L1 !== null && ELEMENTS_PLAN[spec.variante]) {
     for (const e of ELEMENTS_PLAN[spec.variante](L1)) {
       const ya = yOff(e.a);
-      const ex = e.pointille ? 'stroke-dasharray="6 4"' : '';
       if (e.t === 'barriere') {
-        s.line(xa, ya - 3, xb, ya - 3, pal.steel, 3, ex);
-        etiquettes.push([ya - 3, `${e.lab} · au bord de la BAU`]);
+        const y = ya - 0.3 * k;
+        s.line(xa, y, xb, y, pal.steel, 2.6, e.pointille ? 'stroke-dasharray="6 4"' : '');
+        if (!e.pointille) supports(y, 4);
+        etiquettes.push([y, `${e.lab} · au bord de la BAU`]);
       } else if (e.t === 'beton') {
         const yb = yOff(e.b);
-        s.rect(xa, yb, xb - xa, Math.max(5, ya - yb), pal.concrete, pal.steel, 1);
-        etiquettes.push([yb, `${e.lab} · ${e.a > 0 ? `de ${fmt(e.a)} à ${fmt(e.b)} m` : `sur ${fmt(e.b)} m`}`]);
+        const mur = /Mur/.test(e.lab);
+        s.rect(xa, yb, xb - xa, Math.max(3, ya - yb), mur ? `url(#${id}hb)` : pal.concrete, pal.steel, 1);
+        if (/écran/.test(e.lab)) { s.line(xa, yb, xb, yb, pal.steel, 2.2); supports(yb, 3, 4); }
+        etiquettes.push([(ya + yb) / 2, `${e.lab} · ${e.a > 0 ? `de ${fmt(e.a)} à ${fmt(e.b)} m` : `sur ${fmt(e.b)} m`}`]);
       } else if (e.t === 'ecran') {
-        s.line(xa, ya, xb, ya, pal.steel, 3);
-        for (let x = xa + 10; x < xb; x += 24) s.line(x, ya - 4, x, ya + 4, pal.steel, 1.4);
+        s.line(xa, ya, xb, ya, pal.steel, 2.6);
+        supports(ya, 3, 4);
         etiquettes.push([ya, `${e.lab} · à ${fmt(e.a)} m`]);
       } else if (e.t === 'cloture') {
-        s.line(xa, ya, xb, ya, pal.muted, 1);
-        for (let x = xa + 12; x < xb; x += 34) s.text(x, ya + 4, '×', { size: 10, fill: pal.muted });
+        s.line(xa, ya, xb, ya, pal.muted, 1.2);
+        for (let x = xa + 6; x < xb; x += 3 * kx) s.add(`<circle cx="${r1(x)}" cy="${r1(ya)}" r="1.8" fill="${pal.muted}"/>`);
         etiquettes.push([ya, `${e.lab} · à ${fmt(e.a)} m`]);
       } else if (e.t === 'merlon') {
         const yb = yOff(e.b);
-        s.rect(xa, yb, xb - xa, ya - yb, pal.earth, pal.groundEdge, 1);
         const [c0, c1] = e.crete.map(yOff);
-        s.rect(xa, c1, xb - xa, c0 - c1, pal.earth, pal.groundEdge, 1, 'opacity="0.9"');
-        s.line(xa, (c0 + c1) / 2, xb, (c0 + c1) / 2, pal.muted, 1, 'stroke-dasharray="3 5"');
-        etiquettes.push([yb, `${e.lab} · de ${fmt(e.a)} à ${fmt(e.b)} m`]);
+        s.rect(xa, yb, xb - xa, ya - yb, pal.earth);
+        for (let x = xa + 5; x < xb; x += 9) {
+          const lg = (Math.round((x - xa) / 9) % 2) ? 1 : 0.55;
+          s.line(x, c0, x, c0 + (ya - c0) * lg, pal.groundEdge, 1);
+          s.line(x, c1, x, c1 - (c1 - yb) * lg, pal.groundEdge, 1);
+        }
+        s.line(xa, c0, xb, c0, pal.groundEdge, 1.4);
+        s.line(xa, c1, xb, c1, pal.groundEdge, 1.4);
+        s.line(xa, (c0 + c1) / 2, xb, (c0 + c1) / 2, pal.muted, 1);
+        etiquettes.push([(c0 + c1) / 2, `${e.lab} · de ${fmt(e.a)} à ${fmt(e.b)} m`]);
       } else if (e.t === 'fosse') {
         const yb = yOff(e.b);
-        s.rect(xa, yb, xb - xa, ya - yb, pal.bg, pal.groundEdge, 1.2);
-        etiquettes.push([yb, `${e.lab} · de ${fmt(e.a)} à ${fmt(e.b)} m`]);
+        const m1 = yOff(e.a + 2.25);
+        const m2 = yOff(e.b - 2.25);
+        s.rect(xa, yb, xb - xa, ya - yb, pal.grass);
+        s.rect(xa, m2, xb - xa, m1 - m2, pal.water);
+        for (let x = xa + 5; x < xb; x += 9) {
+          const lg = (Math.round((x - xa) / 9) % 2) ? 1 : 0.55;
+          s.line(x, ya, x, ya - (ya - m1) * lg, pal.groundEdge, 1);
+          s.line(x, yb, x, yb + (m2 - yb) * lg, pal.groundEdge, 1);
+        }
+        etiquettes.push([(m1 + m2) / 2, `${e.lab} · de ${fmt(e.a)} à ${fmt(e.b)} m`]);
       }
     }
   } else if (L1 !== null && spec.variante === 'SC6-S1') {
-    s.text((xa + xb) / 2, yT + hi / 2 + 5, 'Pas de dispositif a priori : analyse au cas par cas', { size: 13, fill: pal.muted, italic: true });
-  }
-  etiquettes.sort((a, b) => b[0] - a[0]);
-  let dernier = Infinity;
-  for (const [y, t] of etiquettes) {
-    const yy = Math.min(y - 7, dernier - 16);
-    s.text(xa + 12, yy, t, { size: 12.5, weight: 700, anchor: 'start' });
-    dernier = yy;
+    etiquettes.push([(yT + yR) / 2, 'Pas de dispositif a priori']);
   }
 
-  // bord de la BAU, BAU, chaussée
-  s.line(xa, yR, xb, yR, pal.ink, 2);
-  s.text(xb + 14, yR + 5, 'Bord de la BAU', { size: 12, anchor: 'start', fill: pal.muted });
-  s.rect(xa, yR, xb - xa, 24, pal.asphalt, 'none', 0, 'opacity="0.55"');
-  s.text(xa + 12, yR + 16, 'BAU ≥ 2,00 m', { size: 11.5, weight: 700, anchor: 'start', fill: pal.bg });
-  s.rect(xa, yR + 24, xb - xa, 56, pal.asphalt);
-  s.line(xa, yR + 52, xb, yR + 52, pal.bg, 1.6, 'stroke-dasharray="16 12"');
-  s.text(xb + 14, yR + 56, 'Chaussée', { size: 12, anchor: 'start', fill: pal.muted });
+  // route : BAU, ligne de rive, deux voies, véhicules
+  s.rect(xa, yR, xb - xa, yEnd - yR, pal.asphalt);
+  s.line(xa, Y(R + L + 2.5), xb, Y(R + L + 2.5), pal.marking, 2);
+  s.line(xa, Y(R + L + 6), xb, Y(R + L + 6), pal.marking, 1.6, `stroke-dasharray="${3 * kx} ${10 * kx}"`);
+  const vehicule = (x, axe, lg, larg, couleur) => {
+    s.rect(x, Y(axe) - (larg * k) / 2, lg * kx, larg * k, couleur, pal.ink, 0.8, 'rx="2"');
+    s.rect(x + lg * kx - 2.2 * kx, Y(axe) - (larg * k) / 2, 2.2 * kx, larg * k, pal.panel, pal.ink, 0.8, 'rx="2"');
+  };
+  vehicule(xa + 40 * kx, R + L + 4.25, 16, 2.5, pal.concrete);
+  vehicule(xa + 85 * kx, R + L + 7.75, 4.5, 1.8, pal.accent);
 
-  // cote L1
+  // repères et étiquettes à droite
+  const xl = xb + 14;
+  const droite = [
+    [Y(5), 'Voie ferrée (2 voies)', true],
+    [yT, 'Entrée en terre', false],
+    ...etiquettes.map(([y, t]) => [y, t, true]),
+    [yR, 'Bord de la BAU', false],
+    [Y(R + L + 1.25), 'BAU', false],
+    [Y(R + L + 6), 'Chaussée', false],
+  ].sort((a, b) => a[0] - b[0]);
+  let precedent = -Infinity;
+  for (const [y, t, gras] of droite) {
+    const yy = Math.max(y + 4, precedent + 15);
+    s.line(xb, y, xl - 4, yy - 4, pal.muted, 0.8);
+    s.text(xl, yy, t, { size: 12, anchor: 'start', weight: gras ? 700 : 400, fill: gras ? pal.ink : pal.muted });
+    precedent = yy;
+  }
+
+  // cotes à gauche
   if (L1 !== null && !talus) {
-    s.line(110, yT, 110, yR, pal.cote, 1.4);
-    s.poly([[110, yT], [105, yT + 10], [115, yT + 10]], pal.cote);
-    s.poly([[110, yR], [105, yR - 10], [115, yR - 10]], pal.cote);
-    s.text(98, (yT + yR) / 2 - 2, 'L1', { size: 16, weight: 700, fill: pal.cote, anchor: 'end' });
-    s.text(98, (yT + yR) / 2 + 16, `${fmt(L1)} m`, { size: 13, weight: 700, fill: pal.cote, anchor: 'end' });
-  } else if (talus && spec.denivele !== null && spec.denivele !== undefined) {
-    s.text(98, (yT + yR) / 2 + 5, `Δh ${fmt(spec.denivele)} m`, { size: 13, weight: 700, fill: pal.cote, anchor: 'end' });
+    s.line(100, yT, 100, yR, pal.cote, 1.4);
+    s.poly([[100, yT], [95, yT + 9], [105, yT + 9]], pal.cote);
+    s.poly([[100, yR], [95, yR - 9], [105, yR - 9]], pal.cote);
+    s.text(90, (yT + yR) / 2 - 2, 'L1', { size: 16, weight: 700, fill: pal.cote, anchor: 'end' });
+    s.text(90, (yT + yR) / 2 + 15, `${fmt(L1)} m`, { size: 13, weight: 700, fill: pal.cote, anchor: 'end' });
   }
-  if (L1 !== null && !talus) s.text(xb, H - 8, 'Distances mesurées depuis le bord de la BAU · largeurs non proportionnelles', { size: 11, anchor: 'end', fill: pal.muted, italic: true });
+  s.line(100, yR + 2, 100, Y(R + L + 2.5), pal.cote, 1);
+  s.text(90, Y(R + L + 1.25) + 4, '2,50', { size: 11, fill: pal.cote, anchor: 'end' });
+
+  // échelle
+  const e10 = 10 * kx;
+  s.line(xa, H - 12, xa + e10, H - 12, pal.ink, 2);
+  s.line(xa, H - 16, xa, H - 8, pal.ink, 1);
+  s.line(xa + e10, H - 16, xa + e10, H - 8, pal.ink, 1);
+  s.text(xa + e10 + 6, H - 8, '10 m (en long)', { size: 11, anchor: 'start', fill: pal.muted });
+  s.text(xb, H - 8, 'Largeurs à l’échelle ; distances depuis le bord de la BAU', { size: 11, anchor: 'end', fill: pal.muted, italic: true });
   return s.toString();
 }
 

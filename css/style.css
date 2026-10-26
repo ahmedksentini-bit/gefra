@@ -27,6 +27,9 @@
   --ground: #ECE8DD;
   --ground-edge: #8C8473;
   --earth: #D8CBA8;
+  --grass: #DDE6D3;
+  --ballast: #B9B1A4;
+  --marking: #FFFFFF;
   --concrete: #C9CFCD;
   --steel: #3D4B58;
   --rail: #6B5B4E;
@@ -67,6 +70,12 @@
     --ground: #2A2D2A;
     --ground-edge: #8A8170;
     --earth: #5C5340;
+  --grass: #2C3A2C;
+  --ballast: #5E5A54;
+  --marking: #E9EDF0;
+    --grass: #2C3A2C;
+    --ballast: #5E5A54;
+    --marking: #E9EDF0;
     --concrete: #59646B;
     --steel: #B8C4CE;
     --rail: #A8907C;
