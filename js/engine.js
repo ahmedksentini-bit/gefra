@@ -682,10 +682,12 @@ function evalEchangeur(p) {
   Object.assign(res, { code: 'EC', ...pick(CAS.EC), statut: 'analyse' });
   let niveauMin = 'H2';
   let hMin = 3.0;
+  let coupe = { kind: 'oa', variante: 'BLE' };
   const cas = casSC(p.L1);
   if (cas && CAS[cas]) {
     const tmp = base(p);
     appliquerCasSC(tmp, cas, p);
+    coupe = tmp.solutions.find((x) => x.role !== 'alternative')?.schema || coupe;
     if (rang(tmp.exigence.niveauMin) > rang(niveauMin)) niveauMin = tmp.exigence.niveauMin;
     if (tmp.exigence.phys?.type === 'ecran') hMin = Math.max(hMin, tmp.exigence.phys.hMin);
     res.notes.push(`Avec L1 = ${fmtM(p.L1)}, la section courante relèverait du ${CAS[cas].titre} (${CAS[cas].plage}).`);
@@ -696,7 +698,8 @@ function evalEchangeur(p) {
     'Les échangeurs surélevés et contigus aux plates-formes jumelées font l’objet d’une analyse particulière.',
     'Dispositifs préconisés : LBE (accotement), BHE (accotement), BLE (ouvrages).',
     'Consulter le groupe Géfra en présence d’échangeurs complexes ou d’une géométrie routière contraignante.',
-  ], null));
+    p.L1 !== null ? 'Coupe ci-dessous : dispositif de section courante correspondant à L1, à adapter aux bretelles.' : 'Coupe ci-dessous : ensemble BLE sur ouvrage ; renseigner L1 pour la coupe de section courante.',
+  ], coupe));
   res.alertes.push({ p: 'P2', t: 'Échangeur contigu : analyse particulière à produire (géométrie, trajectoires, trafic).' });
   finaliser(res, p);
   return res;

@@ -7,7 +7,7 @@ import * as M from './modele.js';
 import * as X from './exports.js';
 import { Store } from './store.js';
 import { LIGNES_EXEMPLE, META_EXEMPLE } from './exemple.js';
-import { htmlComprendre, NB_DIAPOS, svgMesureL1, svgNiveaux, svgZones } from './comprendre.js';
+import { htmlComprendre, NB_DIAPOS, svgNiveaux } from './comprendre.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -15,7 +15,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const nl2br = (s) => esc(s).replace(/\n/g, '<br>');
 
 let projet = null;
-const ui = { vue: 'assistant', ouverts: new Set(), filtre: 'tous', rendues: new Set(), diapo: 0 };
+const ui = { vue: 'assistant', ouverts: new Set(), filtre: 'tous', rendues: new Set(), diapo: 0, cas: 'SC1', sol: 0 };
 
 /* ================================================================ messages et dialogues */
 
@@ -224,7 +224,7 @@ function afficherVue(v) {
 }
 
 function rendreVue(v, force = false) {
-  if (v === 'comprendre') $('#g-contenu').innerHTML = htmlComprendre(ui.diapo);
+  if (v === 'comprendre') $('#g-contenu').innerHTML = htmlComprendre(ui.diapo, ui);
   else if (v === 'assistant') rendreResultatAssistant();
   else if (v === 'lineaire') rendreLineaire();
   else if (v === 'constats') rendreConstats();
@@ -233,10 +233,18 @@ function rendreVue(v, force = false) {
   else if (v === 'referentiel' && (!ui.rendues.has('ref') || force)) rendreReferentiel();
 }
 
+function choisirCoupe(cas, sol) {
+  ui.cas = cas;
+  ui.sol = sol;
+  $('#g-contenu').innerHTML = htmlComprendre(ui.diapo, ui);
+  const cible = $(`#g-contenu [data-sol="${sol}"]`) || $(`#g-contenu [data-cas="${cas}"]`);
+  cible?.focus({ preventScroll: true });
+}
+
 function allerDiapo(n, depuisOnglet = false) {
   if (n < 0 || n >= NB_DIAPOS || n === ui.diapo) return;
   ui.diapo = n;
-  $('#g-contenu').innerHTML = htmlComprendre(n);
+  $('#g-contenu').innerHTML = htmlComprendre(n, ui);
   const cible = depuisOnglet ? $(`#g-contenu [role="tab"][data-diapo="${n}"]`) : $('#g-contenu .diapo-pied .primary');
   cible?.focus({ preventScroll: true });
   $('#v-comprendre').scrollIntoView({ block: 'start' });
@@ -852,9 +860,6 @@ function rendreReferentiel() {
   ui.rendues.add('ref');
   const t = (entetes, lignes) => `<div class="table-wrap nu"><table class="ref-table"><thead><tr>${entetes.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${lignes.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   $('#ref-contenu').innerHTML = `
-    <section class="panel ref-section"><h2>Mesure de L1 (§4.1)</h2>
-      <figure class="figure schema">${svgMesureL1()}</figure>
-    </section>
     <section class="panel ref-section"><h2>Section courante : plates-formes au même niveau ou voie ferrée en contrebas (§4.2, §4.3)</h2>
       ${t(['Cas', 'L1', 'Niveau minimal', 'Dispositif du guide', 'Points clés'], [
         ['Hors cas', '< 2 m', 'H3 (base)', 'Étude spécifique', 'Non traité par le guide : avis du groupe Géfra.'],
@@ -878,7 +883,6 @@ function rendreReferentiel() {
       <p class="help">Configurations « route en déblai » ou « voie ferrée en remblai » : la position de la limite entre emprises est sans incidence sur le dispositif.</p>
     </section>
     <section class="panel ref-section"><h2>Zones particulières (§5)</h2>
-      <figure class="figure schema">${svgZones()}</figure>
       ${t(['Zone', 'Règle'], [
         ['Plates-formes jumelées sur ouvrage', 'Continuité de la protection entre plates-formes, de niveau équivalent à la section courante, déterminée avec la courbe de chute (§5.1).'],
         ['Ouvrage au-dessus de la voie ferrée', 'H2 minimum ; H3 avec ensemble BLE (BN4 + écran) de 3,00 m sur itinéraire à fort trafic PL ; LBE non implantable en rive d’ouvrage courant.'],
@@ -1039,6 +1043,17 @@ function init() {
   $('#g-contenu').addEventListener('click', (e) => {
     const b = e.target.closest('[data-diapo]');
     if (b && !b.disabled) allerDiapo(Number(b.dataset.diapo), b.getAttribute('role') === 'tab');
+    const cas = e.target.closest('[data-cas]');
+    if (cas) choisirCoupe(cas.dataset.cas, 0);
+    const sol = e.target.closest('[data-sol]');
+    if (sol) choisirCoupe(ui.cas, Number(sol.dataset.sol));
+  });
+  $('#g-contenu').addEventListener('keydown', (e) => {
+    const cas = e.target.closest('[data-cas]');
+    if (cas && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      choisirCoupe(cas.dataset.cas, 0);
+    }
   });
   document.addEventListener('keydown', (e) => {
     if (ui.vue !== 'comprendre' || e.target.closest('input, textarea, select') || $('#dlg').open) return;

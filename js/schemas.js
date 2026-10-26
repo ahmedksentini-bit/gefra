@@ -184,7 +184,7 @@ export function svgCoupe(spec, pal = PAL_ECRAN) {
       caniveau();
       mur(L1 - 1.0, L1 - 0.5, 3.5, 'Mur BA');
       emprise(L1 - 0.5);
-      coteV(L1 - 1.0, 0, 3.5, '3,50', -16);
+      coteV(L1 - 1.0, 0, 3.5, '3,50', 16);
       cote(0, L1 - 1.0, rowA, L(L1 - 1.0), 1.0);
       cote(L1 - 1.0, L1 - 0.5, rowA, '0,50');
       cote(L1 - 0.5, L1, rowA, '0,50');
@@ -217,7 +217,7 @@ export function svgCoupe(spec, pal = PAL_ECRAN) {
       mur(L1 - 1.0, L1 - 0.5, 1.5, 'Mur BA');
       ecran(L1 - 0.75, 1.5, 3.5, 'Écran + clôture');
       emprise(L1 - 0.5);
-      coteV(L1 - 1.0, 0, 3.5, '3,50', -16);
+      coteV(L1 - 1.0, 0, 3.5, '3,50', 16);
       coteV(0.5, 0, 0.8, '0,80', -12);
       cote(0, 0.5, rowA, '0,50');
       cote(0.5, L1 - 1.0, rowA, L(L1 - 1.5), 1.0);

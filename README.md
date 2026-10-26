@@ -8,7 +8,7 @@ Site statique : HTML, CSS et JavaScript (modules ES), sans étape de compilation
 
 | Onglet | Rôle |
 |---|---|
-| **Comprendre** | L'essentiel en quatre écrans, un schéma par écran : le principe, la mesure de L1, le cas, le constat. |
+| **Comprendre** | L'essentiel en quatre écrans : la mesure de L1 selon chaque profil, le cas avec sa coupe type cotée (cliquer sur un cas), toutes les situations en plan, le passage du contrôle au constat. |
 | **Assistant** | Détermine, pour une configuration, le cas Géfra, le niveau de retenue et l'élément anti-pénétration exigés. Il présente les solutions du guide avec une coupe type cotée à la valeur réelle de L1, puis contrôle le dispositif projeté. |
 | **Linéaire** | Analyse tronçon par tronçon (PK, côté, zone, L1, dénivelé, talus, dispositif projeté). Saisie directe, collage depuis Excel, import CSV ou XLSX, modèle .xlsx fourni. |
 | **Constats** | Constats générés à partir des écarts (localisation, constat, risque, recommandation, référence au guide), classés P0, P1 ou P2. L'auditeur peut modifier la priorité et les textes. |
@@ -18,7 +18,7 @@ Site statique : HTML, CSS et JavaScript (modules ES), sans étape de compilation
 
 ## Comment ça marche
 
-L'onglet **Comprendre** présente ce fonctionnement en quatre écrans, un schéma par écran. Les schémas de détail (mesure de L1, niveaux différents, zones particulières) sont dans l'onglet **Référentiel**. Tous sont redessinés et renvoient à la page du guide concernée.
+L'onglet **Comprendre** présente ce fonctionnement en quatre écrans : la mesure de L1 selon chaque profil, le cas et sa coupe type cotée, toutes les situations en plan, le passage du contrôle au constat. Le schéma des niveaux différents est dans l'onglet **Référentiel**. Tous sont redessinés et renvoient à la page du guide concernée.
 
 ```mermaid
 flowchart LR
