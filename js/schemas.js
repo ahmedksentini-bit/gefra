@@ -592,7 +592,7 @@ function planSectionCourante(spec, pal) {
   const yT = Y(R);
   const yR = Y(R + L);
   const yEnd = Y(R + L + ROUTE);
-  const H = yEnd + (spec.zone === 'echangeur' ? 60 : 34);
+  const H = yEnd + 34;
   const s = new Svg(W, H, pal, `Vue en plan${L1 !== null ? ` : L1 = ${fmt(L1)} m` : ''}`);
   const yOff = (d) => yR - Math.max(0, Math.min(d, L)) * k;
   const id = s.id;
@@ -709,10 +709,7 @@ function planSectionCourante(spec, pal) {
   }
 
   // route : BAU, ligne de rive, deux voies, véhicules
-  if (spec.zone === 'echangeur') {
-    s.add(`<path d="M${xa + 70 * kx},${yEnd} C${xa + 90 * kx},${yEnd} ${xa + 100 * kx},${yEnd + 18} ${xb},${yEnd + 26}" fill="none" stroke="${pal.asphalt}" stroke-width="${Math.max(8, 4 * k)}"/>`);
-    s.text(xa + 104 * kx, yEnd + 14, 'bretelle', { size: 11.5, fill: pal.muted, anchor: 'end' });
-  }
+  const echangeur = spec.zone === 'echangeur';
   s.rect(xa, yR, xb - xa, yEnd - yR, pal.asphalt);
   if (laterale) {
     s.line(xa, yR + 2, xb, yR + 2, pal.marking, 1.6);
@@ -722,13 +719,24 @@ function planSectionCourante(spec, pal) {
   }
   const vehicule = (x, axe, lg, larg, couleur) => {
     s.rect(x, Y(axe) - (larg * k) / 2, lg * kx, larg * k, couleur, pal.ink, 0.8, 'rx="2"');
-    s.rect(x + lg * kx - 2.2 * kx, Y(axe) - (larg * k) / 2, 2.2 * kx, larg * k, pal.panel, pal.ink, 0.8, 'rx="2"');
+    s.rect(x, Y(axe) - (larg * k) / 2, 2.2 * kx, larg * k, pal.panel, pal.ink, 0.8, 'rx="2"');
   };
+  if (echangeur) {
+    // bretelle de sortie, à droite du sens de circulation : elle quitte la BAU vers la voie ferrée
+    const yb = Math.max(yT + 3 * k, yR - 6 * k);
+    const d = `M${xa + 105 * kx},${yR + 1.25 * k} C${xa + 80 * kx},${yR + 1.25 * k} ${xa + 70 * kx},${yb} ${xa + 40 * kx},${yb} L${xa},${yb}`;
+    s.add(`<path d="${d}" fill="none" stroke="${pal.asphalt}" stroke-width="${Math.max(8, 4 * k)}"/>`);
+    s.add(`<path d="M${xa + 70 * kx},${yb - 2.3 * k} L${xa},${yb - 2.3 * k}" fill="none" stroke="${pal.steel}" stroke-width="2.6"/>`);
+    etiquettes.push([yb - 2.3 * k, 'Bretelle de sortie (protégée)']);
+  }
+  const fleche = (x, axe) => s.poly([[x, Y(axe)], [x + 3 * kx, Y(axe) - 0.5 * k], [x + 3 * kx, Y(axe) + 0.5 * k]], pal.marking);
   if (laterale) {
     vehicule(xa + 60 * kx, R + L + 2.7, 5.5, 2.0, pal.hazard);
   } else {
     vehicule(xa + 40 * kx, R + L + 4.25, 16, 2.5, pal.concrete);
     vehicule(xa + 85 * kx, R + L + 7.75, 4.5, 1.8, pal.accent);
+    fleche(xa + 10 * kx, R + L + 4.25);
+    fleche(xa + 10 * kx, R + L + 7.75);
   }
   if (spec.zone === 'oaJum') {
     // les deux plates-formes franchissent une autre voie : vide sous les tabliers
@@ -749,7 +757,7 @@ function planSectionCourante(spec, pal) {
     [yT, spec.position === 'ferBas' ? 'Entrée en terre (crête du talus)' : spec.position === 'ferHaut' ? 'Entrée en terre (pied du talus)' : 'Entrée en terre', false],
     ...etiquettes.map(([y, t]) => [y, t, true]),
     [yR, laterale ? 'Bord de chaussée' : 'Bord de la BAU', false],
-    ...(laterale ? [[Y(R + L + 2.7), 'Voirie latérale de service', true]] : [[Y(R + L + 1.25), 'BAU', false], [Y(R + L + 6), 'Chaussée', false]]),
+    ...(laterale ? [[Y(R + L + 2.7), 'Voirie latérale de service', true]] : [[Y(R + L + 1.25), 'BAU', false], [Y(R + L + 6), 'Chaussée (sens ←, BAU à droite)', false]]),
   ].sort((a, b) => a[0] - b[0]);
   let precedent = -Infinity;
   for (const [y, t, gras] of droite) {
