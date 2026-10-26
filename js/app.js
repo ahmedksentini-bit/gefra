@@ -270,6 +270,12 @@ function htmlResultat(ligne, { compact = false } = {}) {
   const ex = res.exigence;
   let h = '<div class="res">';
 
+  if (!compact) {
+    const sol = res.solutions.find((x) => x.role !== 'alternative') || res.solutions[0];
+    const plan = S.svgPlan({ ...n, variante: sol?.schema?.variante, pkDebut: ligne.pkDebut, pkFin: ligne.pkFin });
+    h += `<figure class="figure panel plan-assistant">${plan}<figcaption>Vue en plan type cotée de la configuration saisie.</figcaption></figure>`;
+  }
+
   h += `<div class="panel"><div class="res-head"><div class="plaque">${esc(pl.grand)}<small>${esc(pl.petit)}</small></div><div>`;
   h += `<div class="eyebrow">Géfra ${esc(res.ref)}${res.plage ? ` · ${esc(res.plage)}` : ''}</div>`;
   h += `<h2>${abbr(res.titre)}</h2><p class="resume">${abbr(res.resume)}</p>`;

@@ -4,13 +4,14 @@
  * courbe de chute du chargement, règle des cas L1.
  * Toutes les longueurs sont en mètres ; x = 0 à la limite roulable, x = L1 à la limite ferroviaire.
  */
-import { fmt, implantationMerlon, porteeChute, fmtTalus } from './engine.js';
+import { fmt, implantationMerlon, porteeChute, fmtTalus, parsePK, fmtPK, longueurAbords } from './engine.js';
 
 export const PAL_ECRAN = {
   ink: 'var(--ink)', muted: 'var(--ink-2)', line: 'var(--line)', bg: 'var(--surface)',
   ground: 'var(--ground)', groundEdge: 'var(--ground-edge)', earth: 'var(--earth)',
   concrete: 'var(--concrete)', steel: 'var(--steel)', cote: 'var(--cote)', accent: 'var(--accent)',
   rail: 'var(--rail)', asphalt: 'var(--asphalt)', hazard: 'var(--hazard)', ok: 'var(--ok)', p0: 'var(--p0)',
+  panel: 'var(--surface-2)', water: 'var(--accent-soft)',
   font: 'inherit',
 };
 
@@ -19,6 +20,7 @@ export const PAL_EXPORT = {
   ground: '#ECE8DD', groundEdge: '#8C8473', earth: '#D8CBA8',
   concrete: '#C9CFCD', steel: '#3D4B58', cote: '#C0262D', accent: '#1D5C8C',
   rail: '#6B5B4E', asphalt: '#5A6168', hazard: '#E0A800', ok: '#2E7D4F', p0: '#C0262D',
+  panel: '#F5F7F6', water: '#E2ECF5',
   font: 'Arial, Helvetica, sans-serif',
 };
 
@@ -536,6 +538,207 @@ export function svgRegleL1(L1, pal = PAL_ECRAN) {
     }
   }
   return s.toString();
+}
+
+/* ------------------------------------------------------------------ vue en plan cotée (Assistant) */
+
+const posEcran = (L1) => (L1 - 4.5 >= 6.5 ? L1 - 4.5 : L1 - 1.5);
+
+/* Éléments du dispositif en plan : distances (m) depuis le bord de la BAU vers la voie ferrée. */
+const ELEMENTS_PLAN = {
+  'SC1-S1': (L1) => [{ t: 'barriere', a: 0, lab: 'GRC' }, { t: 'beton', a: L1 - 1.0, b: L1 - 0.5, lab: 'Mur BA 3,50 m' }],
+  'SC1-S2': () => [{ t: 'beton', a: 0, b: 0.95, lab: 'LBE (LBA + écran 3,50 m)' }],
+  'SC1-S3': (L1) => [{ t: 'beton', a: 0, b: 0.5, lab: 'GBA' }, { t: 'beton', a: L1 - 1.0, b: L1 - 0.5, lab: 'Mur BA 1,50 m + écran 3,50 m' }],
+  'SC2-S1': () => [{ t: 'beton', a: 0, b: 0.95, lab: 'LBE (LBA + écran 3,50 m)' }, { t: 'cloture', a: 4.45, lab: 'Clôture' }],
+  'SC3-S1': (L1) => [{ t: 'barriere', a: 0, lab: 'GS4' }, { t: 'ecran', a: posEcran(L1), lab: 'BHE 3,00 m + clôture' }],
+  'SC3-S2': (L1) => [{ t: 'beton', a: 0, b: 0.5, lab: 'GBA' }, { t: 'ecran', a: posEcran(L1), lab: 'Écran 3,00 m sur massif + clôture' }],
+  'SC4-S1': (L1) => {
+    const m = implantationMerlon(L1);
+    const c0 = 4 + m.mRoute * m.h;
+    return [{ t: 'barriere', a: 0, lab: 'GS4' }, { t: 'merlon', a: 4, b: c0 + m.crete + m.mFer * m.h, crete: [c0, c0 + m.crete], lab: `Merlon ${fmt(m.h)} m` }];
+  },
+  'SC5-S1': () => [{ t: 'barriere', a: 0, lab: 'GS4 si nécessaire', pointille: true }, { t: 'fosse', a: 10, b: 18, lab: 'Fossé 1,50 m' }],
+};
+
+function coteH(s, x1, x2, y, label, pal) {
+  s.line(x1, y, x2, y, pal.cote, 1.2);
+  s.line(x1, y - 5, x1, y + 5, pal.cote, 1.2);
+  s.line(x2, y - 5, x2, y + 5, pal.cote, 1.2);
+  if (label) s.text((x1 + x2) / 2, y - 6, label, { size: 12.5, weight: 700, fill: pal.cote });
+}
+
+function planSectionCourante(spec, pal) {
+  const W = 1000;
+  const xa = 140;
+  const xb = 770;
+  const L1 = spec.L1;
+  const talus = spec.variante && spec.variante.startsWith('FH');
+  const hi = L1 === null || talus ? 80 : Math.max(48, Math.min(170, 30 + Math.sqrt(L1) * 20));
+  const yT = 104;
+  const yR = yT + hi;
+  const H = yR + 24 + 56 + 30;
+  const s = new Svg(W, H, pal, `Vue en plan${L1 !== null ? ` : L1 = ${fmt(L1)} m` : ''}`);
+  const yOff = (d) => yR - (Math.max(0, Math.min(d, L1)) / L1) * hi;
+
+  // tronçon et PK
+  const d = parsePK(spec.pkDebut);
+  const f = parsePK(spec.pkFin);
+  if (d !== null && f !== null && f !== d) {
+    coteH(s, xa, xb, 30, `${fmt(Math.abs(f - d), 0)} m`, pal);
+    s.text(xa, 18, `PK ${fmtPK(Math.min(d, f))}`, { size: 12, anchor: 'start', fill: pal.muted });
+    s.text(xb, 18, `PK ${fmtPK(Math.max(d, f))}`, { size: 12, anchor: 'end', fill: pal.muted });
+  } else {
+    s.text((xa + xb) / 2, 28, 'Tronçon type (renseignez les PK pour coter sa longueur)', { size: 12, fill: pal.muted, italic: true });
+  }
+
+  // voie franchie sous des plates-formes jumelées sur ouvrage
+  if (spec.zone === 'oaJum') {
+    s.rect(420, 40, 80, H - 50, pal.water || pal.bg, pal.accent, 0.8, 'opacity="0.6"');
+    s.text(460, H - 16, 'voie franchie', { size: 11.5, fill: pal.muted });
+  }
+
+  // voie ferrée
+  s.rect(xa, 54, xb - xa, yT - 54, pal.ground, pal.groundEdge, 1);
+  for (let x = xa + 4; x < xb; x += 9) s.line(x, 66, x, 92, pal.rail, 1);
+  s.line(xa, 72, xb, 72, pal.steel, 1.4);
+  s.line(xa, 86, xb, 86, pal.steel, 1.4);
+  const pos = spec.position === 'ferBas' ? 'en contrebas' : spec.position === 'ferHaut' ? 'au-dessus' : '';
+  s.text(xb + 14, 74, 'Voie ferrée', { size: 13, weight: 700, anchor: 'start' });
+  if (pos) s.text(xb + 14, 92, `${pos}${spec.denivele !== null && spec.denivele !== undefined ? ` · Δh ${fmt(spec.denivele)} m` : ''}`, { size: 12, anchor: 'start', fill: pal.muted });
+
+  // interface
+  s.rect(xa, yT, xb - xa, hi, talus ? pal.earth : pal.panel || pal.bg, 'none', 0, talus ? 'opacity="0.55"' : '');
+  s.line(xa, yT, xb, yT, pal.groundEdge, 2);
+  s.text(xb + 14, yT + 5, 'Entrée en terre', { size: 12, anchor: 'start', fill: pal.muted });
+
+  const etiquettes = [];
+  if (talus) {
+    s.text((xa + xb) / 2, yT + hi / 2 + 5, `Talus de raccordement${spec.talus ? ` ${fmtTalus(spec.talus)}` : ''}`, { size: 13, weight: 700 });
+    if (spec.variante !== 'FH-aucun') {
+      const pointille = spec.variante === 'FH-N2-option';
+      s.line(xa, yR - 4, xb, yR - 4, pal.steel, 3, pointille ? 'stroke-dasharray="6 4"' : '');
+      etiquettes.push([yR - 4, pointille ? 'Glissière N2 possible' : 'Glissière N2 (GS4)']);
+    }
+  } else if (L1 !== null && ELEMENTS_PLAN[spec.variante]) {
+    for (const e of ELEMENTS_PLAN[spec.variante](L1)) {
+      const ya = yOff(e.a);
+      const ex = e.pointille ? 'stroke-dasharray="6 4"' : '';
+      if (e.t === 'barriere') {
+        s.line(xa, ya - 3, xb, ya - 3, pal.steel, 3, ex);
+        etiquettes.push([ya - 3, `${e.lab} · au bord de la BAU`]);
+      } else if (e.t === 'beton') {
+        const yb = yOff(e.b);
+        s.rect(xa, yb, xb - xa, Math.max(5, ya - yb), pal.concrete, pal.steel, 1);
+        etiquettes.push([yb, `${e.lab} · ${e.a > 0 ? `de ${fmt(e.a)} à ${fmt(e.b)} m` : `sur ${fmt(e.b)} m`}`]);
+      } else if (e.t === 'ecran') {
+        s.line(xa, ya, xb, ya, pal.steel, 3);
+        for (let x = xa + 10; x < xb; x += 24) s.line(x, ya - 4, x, ya + 4, pal.steel, 1.4);
+        etiquettes.push([ya, `${e.lab} · à ${fmt(e.a)} m`]);
+      } else if (e.t === 'cloture') {
+        s.line(xa, ya, xb, ya, pal.muted, 1);
+        for (let x = xa + 12; x < xb; x += 34) s.text(x, ya + 4, '×', { size: 10, fill: pal.muted });
+        etiquettes.push([ya, `${e.lab} · à ${fmt(e.a)} m`]);
+      } else if (e.t === 'merlon') {
+        const yb = yOff(e.b);
+        s.rect(xa, yb, xb - xa, ya - yb, pal.earth, pal.groundEdge, 1);
+        const [c0, c1] = e.crete.map(yOff);
+        s.rect(xa, c1, xb - xa, c0 - c1, pal.earth, pal.groundEdge, 1, 'opacity="0.9"');
+        s.line(xa, (c0 + c1) / 2, xb, (c0 + c1) / 2, pal.muted, 1, 'stroke-dasharray="3 5"');
+        etiquettes.push([yb, `${e.lab} · de ${fmt(e.a)} à ${fmt(e.b)} m`]);
+      } else if (e.t === 'fosse') {
+        const yb = yOff(e.b);
+        s.rect(xa, yb, xb - xa, ya - yb, pal.bg, pal.groundEdge, 1.2);
+        etiquettes.push([yb, `${e.lab} · de ${fmt(e.a)} à ${fmt(e.b)} m`]);
+      }
+    }
+  } else if (L1 !== null && spec.variante === 'SC6-S1') {
+    s.text((xa + xb) / 2, yT + hi / 2 + 5, 'Pas de dispositif a priori : analyse au cas par cas', { size: 13, fill: pal.muted, italic: true });
+  }
+  etiquettes.sort((a, b) => b[0] - a[0]);
+  let dernier = Infinity;
+  for (const [y, t] of etiquettes) {
+    const yy = Math.min(y - 7, dernier - 16);
+    s.text(xa + 12, yy, t, { size: 12.5, weight: 700, anchor: 'start' });
+    dernier = yy;
+  }
+
+  // bord de la BAU, BAU, chaussée
+  s.line(xa, yR, xb, yR, pal.ink, 2);
+  s.text(xb + 14, yR + 5, 'Bord de la BAU', { size: 12, anchor: 'start', fill: pal.muted });
+  s.rect(xa, yR, xb - xa, 24, pal.asphalt, 'none', 0, 'opacity="0.55"');
+  s.text(xa + 12, yR + 16, 'BAU ≥ 2,00 m', { size: 11.5, weight: 700, anchor: 'start', fill: pal.bg });
+  s.rect(xa, yR + 24, xb - xa, 56, pal.asphalt);
+  s.line(xa, yR + 52, xb, yR + 52, pal.bg, 1.6, 'stroke-dasharray="16 12"');
+  s.text(xb + 14, yR + 56, 'Chaussée', { size: 12, anchor: 'start', fill: pal.muted });
+
+  // cote L1
+  if (L1 !== null && !talus) {
+    s.line(110, yT, 110, yR, pal.cote, 1.4);
+    s.poly([[110, yT], [105, yT + 10], [115, yT + 10]], pal.cote);
+    s.poly([[110, yR], [105, yR - 10], [115, yR - 10]], pal.cote);
+    s.text(98, (yT + yR) / 2 - 2, 'L1', { size: 16, weight: 700, fill: pal.cote, anchor: 'end' });
+    s.text(98, (yT + yR) / 2 + 16, `${fmt(L1)} m`, { size: 13, weight: 700, fill: pal.cote, anchor: 'end' });
+  } else if (talus && spec.denivele !== null && spec.denivele !== undefined) {
+    s.text(98, (yT + yR) / 2 + 5, `Δh ${fmt(spec.denivele)} m`, { size: 13, weight: 700, fill: pal.cote, anchor: 'end' });
+  }
+  if (L1 !== null && !talus) s.text(xb, H - 8, 'Distances mesurées depuis le bord de la BAU · largeurs non proportionnelles', { size: 11, anchor: 'end', fill: pal.muted, italic: true });
+  return s.toString();
+}
+
+function planCarrefour(spec, pal) {
+  const W = 1000;
+  const H = 300;
+  const s = new Svg(W, H, pal, 'Vue en plan : carrefour entre les ouvrages');
+  s.rect(20, 40, 960, 50, pal.ground, pal.groundEdge, 1);
+  for (let x = 24; x < 976; x += 9) s.line(x, 52, x, 78, pal.rail, 1);
+  s.line(20, 58, 980, 58, pal.steel, 1.4);
+  s.line(20, 72, 980, 72, pal.steel, 1.4);
+  s.text(26, 32, 'Voie ferrée', { size: 13, weight: 700, anchor: 'start' });
+  s.rect(20, 170, 960, 60, pal.asphalt);
+  s.line(20, 200, 980, 200, pal.bg, 1.6, 'stroke-dasharray="16 12"');
+  s.text(26, 252, 'Route jumelée', { size: 13, weight: 700, anchor: 'start' });
+  s.rect(440, 0, 50, H, pal.asphalt);
+  s.line(465, 0, 465, H, pal.bg, 1.2, 'stroke-dasharray="10 8"');
+  [[34, 96], [164, 236]].forEach(([a, b]) => {
+    s.line(434, a, 434, b, pal.ink, 2.4);
+    s.line(496, a, 496, b, pal.ink, 2.4);
+  });
+  const am = spec.amenagement;
+  if (am === 'deplace') {
+    s.add(`<path d="M496,${H} L496,250 C496,240 505,236 520,236 L760,236" fill="none" stroke="${pal.asphalt}" stroke-width="16"/>`);
+    s.text(770, 240, 'Débouché reporté au-delà des dispositifs', { size: 13, weight: 700, anchor: 'start' });
+    s.line(502, 96, 502, 164, pal.steel, 3);
+    s.text(512, 134, 'Retenue continue sur l’ouvrage', { size: 12.5, anchor: 'start', fill: pal.muted });
+  } else {
+    s.rect(490, 122, 290, 18, pal.asphalt, 'none', 0, 'opacity="0.8"');
+    s.text(790, 136, 'Accès de service', { size: 12.5, anchor: 'start', fill: pal.muted });
+    const ang = spec.decalageAngle ?? 7.5;
+    const r = ((am === 'decale' ? ang : 0) * Math.PI) / 180;
+    const len = 34;
+    s.line(502, 96, 502 + Math.tan(r) * len, 96 + len - 4, pal.steel, 3);
+    s.line(502, 164, 502 + Math.tan(r) * len, 164 - len + 4, pal.steel, 3);
+    if (am === 'decale') {
+      s.add(`<path d="M502,${96 + 22} A22,22 0 0 0 ${502 + Math.sin(r) * 22},${96 + Math.cos(r) * 22}" fill="none" stroke="${ang > 10 ? pal.p0 : pal.cote}" stroke-width="1.4"/>`);
+      s.text(540, 104, `Décalage ${fmt(ang, 0)}° (5 à 10° max.)`, { size: 13, weight: 700, anchor: 'start', fill: ang > 10 ? pal.p0 : pal.cote });
+    } else if (am === 'musoir' || am === 'musoirAtt') {
+      s.poly([[490, 140], [520, 131], [490, 122]], pal.hazard, pal.ink, 1);
+      s.text(540, 104, am === 'musoirAtt' ? 'Musoir avec atténuateur de choc' : 'Musoir intégré', { size: 13, weight: 700, anchor: 'start' });
+    } else {
+      s.text(540, 104, 'Débouché entre les deux ouvrages', { size: 13, weight: 700, anchor: 'start' });
+    }
+  }
+  s.text(980, 32, spec.traficPL === 'fort' ? 'Trafic PL important : débouché à reporter' : 'Trafic PL moyen ou faible', { size: 12.5, anchor: 'end', fill: pal.muted });
+  return s.toString();
+}
+
+/** Vue en plan cotée de la configuration saisie dans l'Assistant. */
+export function svgPlan(spec, pal = PAL_ECRAN) {
+  if (spec.zone === 'oa' || spec.zone === 'abords') {
+    const angle = spec.angle ?? 90;
+    return svgAbords({ angle, longueur: longueurAbords(angle) }, pal);
+  }
+  if (spec.zone === 'carrefour') return planCarrefour(spec, pal);
+  return planSectionCourante(spec, pal);
 }
 
 /* ------------------------------------------------------------------ aiguillage */
